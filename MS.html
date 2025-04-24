@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<!-- A game I made back in 2015. -->
+
+<meta charset="UTF-8">
+<title>Vanilla JavaScript MineSweeper</title>
+
+<style>
+
+	body {
+		background: white;
+	}
+
+	#grid {
+		margin: 0 auto;
+	}
+
+	table, tr, td {
+		border: 1px solid black;
+		border-collapse: collapse;
+	}
+
+	td {
+		width: 30px;
+		height: 30px;
+		background: gray;
+		text-align: center;
+	}
+	
+	.white {
+		background: white;
+		font-size: 16px;
+	}
+	
+	.nearby1 {
+		background: yellow;
+	}
+	
+	.nearby2 {
+		background: orange;
+	}
+	
+	.nearby3 {
+		background: red;
+	}
+	
+	.nearby4 {
+		background: purple;
+	}
+	
+	.mine {
+		background: black;
+	}
+	
+	.hidden {
+		background: gray;
+		font-size: 0px;
+	}
+	
+	/* -------------------------- */
+	
+	.panel td {
+		width: 0;
+		height: 0;
+		background: none;
+		text-align: center;
+	}
+	
+	.panel {
+		position: relative;
+		width: 300px;
+		height: 120px;
+		margin: 0 auto;
+		text-align: center;
+		border: 1px solid black;
+		border-spacing: 0;
+		background: white;
+	}
+	
+	.panel #settings-btn, #stats-btn, #restart, .grid-size, .difficulty, #settings-return, #grid-size-custom, #clear-stats, #stats-return {
+		cursor: pointer;
+	}
+	
+	/* -------------------------- */
+	
+	#info {
+		background: lime;
+		z-index: 3;
+	}
+	
+	#settings {
+		background: yellow;
+		z-index: 2;
+		margin-top: -120px;
+	}
+	
+	#stats {
+		background: cyan;
+		z-index: 1;
+		margin-top: -120px;
+	}
+	
+	/* -------------------------- */
+	
+	#info td:first-child {
+		text-align: left;
+		padding-left: 10px;
+		width: 200px;
+	}
+	
+	#info td:last-child {
+		text-align: right;
+		padding-right: 10px;
+	}
+	
+	#info td:last-child:hover {
+		text-decoration: underline;
+	}
+	
+	/* -------------------------- */
+	
+
+	#settings .grid-size {
+		width: 30px;
+	}
+	
+	#settings .difficulty {
+		width: 60px;
+		text-align: center;
+	}
+	
+	#settings .difficulty:hover, .grid-size:hover, #grid-size-custom:hover, #settings-return:hover {
+		background: orange;
+	}
+	
+	#settings #settings-return {
+		width: 60px;
+	}
+	
+	/* -------------------------- */
+
+	#stats, #stats tr, #stats td {
+		border: 1px solid black;
+		border-collapse: collapse;
+	}
+	
+	#stats tr:first-child td:first-child {
+		background: black;
+		color: white;
+	}
+	
+	#stats td:first-child {
+		width: 25px;
+	}
+	
+	#stats #stat-easy, #stat-medium, #stat-hard {
+		width: 45px;
+	}
+	
+	#stats td:first-child, #stats td:nth-child(2), #stats td:nth-child(3), #stats td:nth-child(4) {
+		background: white;
+	}
+	
+	#stats td:nth-child(5), #stats td:nth-child(6) {
+		border: 1px solid black;
+	}
+	
+	#stats #clear-stats {
+		width: 70px;
+	}
+	
+	#stats #clear-stats:hover {
+		background: white;
+	}
+	
+	#stats #stats-return:hover {
+		background: white;
+	}
+	
+	#stats #total-time-title {
+		border-bottom: 1px solid cyan;
+		vertical-align: bottom;
+	}
+	
+	#stats #total-time-counter {
+		vertical-align: top;
+	}
+	
+	/* -------------------------- */
+
+	body > p {
+		text-align: center;
+		margin: 5px 0;
+		color: red;
+	}
+	
+</style>
+
+</head>
+
+<body onload="initialize()" oncontextmenu="return false;">
+	
+	<table id="grid"></table>
+	<p id="notificator">&nbsp;</p>
+	
+	<table class="panel" id="info">
+	
+		<tr>
+			<td id="mine-counter">Mines left: 0/0</td>					
+			<td id="settings-btn">Settings</td>
+		</tr>
+		
+		<tr>
+			<td id="click-count">Clicks: 0</td>	
+			<td id="stats-btn">Stats</td>
+		</tr>
+		
+		<tr>
+			<td id="time-counter">Time: 0:00</td>
+			<td id="restart" onclick="location.reload()">[Restart]</td>
+		</tr>
+	
+	</table>
+	
+	<table class="panel" id="settings">
+	
+		<tr>
+			<td colspan="3">Grid Size</td>
+			<td class="difficulty" id="difficulty-easy" onclick="setEasy()">Easy</td>
+			<td id="settings-return">Back</td>
+		</tr>
+		
+		<tr>
+			<td class="grid-size" id="grid-size-8" onclick="size8()">8</td>
+			<td class="grid-size" id="grid-size-12" onclick="size12()">12</td>
+			<td class="grid-size" id="grid-size-16" onclick="size16()">16</td>
+			<td class="difficulty" id="difficulty-medium" onclick="setMedium()">Medium</td>
+			<td></td>
+		</tr>
+		
+		<tr>
+			<td id="grid-size-custom" colspan="3" onclick="alert('Not implemented!')">Custom</td>
+			<td class="difficulty" id="difficulty-hard" onclick="setHard()">Hard</td>
+			<td></td>
+		</tr>
+	
+	</table>
+	
+	<table class="panel" id="stats">
+	
+		<tr>
+			<td></td>
+			<td id="stat-easy">Easy</td>
+			<td id="stat-medium">Med</td>
+			<td id="stat-hard">Hard</td>
+			<td id="clear-stats" onclick="clearStorage()">[Clear]</td>
+			<td id="stats-return">Back</td>
+		</tr>
+		
+		<tr>
+			<td>8</td>
+			<td id="easy-8">-</td>
+			<td id="medium-8">-</td>
+			<td id="hard-8">-</td>
+			<td id="win-counter" colspan="2">Wins: 0/0</td>
+		</tr>
+		
+		<tr>
+			<td>12</td>
+			<td id="easy-12">-</td>
+			<td id="medium-12">-</td>
+			<td id="hard-12">-</td>
+			<td id="total-time-title" colspan="2">Total time</td>
+		</tr>
+		
+		<tr>
+			<td>16</td>
+			<td id="easy-16">-</td>
+			<td id="medium-16">-</td>
+			<td id="hard-16">-</td>
+			<td id="total-time-counter" colspan="2">00:00:00</td>
+		</tr>	
+		
+	</table>
+</body>
+
+<script>
+
+function initialize() {
+
+	localStorageInit();
+	zeroPrefix();
+	console.log(localStorage)
+	
+	/* --------- */
+	
+	cellCount = gridSize * gridSize;
+	mineCount = Math.floor((difficulty * 0.375 + 0.875) * gridSize);
+	clickCount = 0;
+	initialMineCount = mineCount;
+
+	var table = document.querySelector("#grid");
+	var statsBTN = document.querySelector("#stats-btn");
+	var settingsBTN = document.querySelector("#settings-btn");
+	var statsReturn = document.querySelector("#stats-return");
+	var settingsReturn = document.querySelector("#settings-return");
+	
+	/* -- -- Table creation -- -- */
+	for (var i = 0; i < gridSize; i++) {
+		var row = table.insertRow(i);
+		for (var j = 0; j < gridSize; j++) {
+			var cell = row.insertCell(j);
+		}
+	}
+	
+	table.addEventListener("mousedown", clicked);
+	settingsBTN.addEventListener("click", settings);
+	settingsReturn.addEventListener("click", mainMenu);
+	statsBTN.addEventListener("click", stats)
+	statsReturn.addEventListener("click", mainMenu);
+	
+	switch (gridSize) {
+		case 8:
+			document.querySelector("#grid-size-8").style.textDecoration = "underline";
+			break;
+		case 12:
+			document.querySelector("#grid-size-12").style.textDecoration = "underline";
+			break;
+		case 16:
+			document.querySelector("#grid-size-16").style.textDecoration = "underline";
+			break;
+		default:
+			document.querySelector("#grid-size-custom").style.textDecoration = "underline";
+	}
+	
+	switch (difficulty) {
+		case 1:	
+			document.querySelector("#difficulty-easy").style.textDecoration = "underline";
+			break;
+		case 2:
+			document.querySelector("#difficulty-medium").style.textDecoration = "underline";
+			break;
+		case 3:
+			document.querySelector("#difficulty-hard").style.textDecoration = "underline";
+			break;
+	}
+
+	/* -- -- Set cell IDs -- -- */
+	
+	tds = document.querySelectorAll("#grid td");
+	for (var i = 0; i < cellCount; i++) {
+		tds[i].id = "cell" + i;
+	}
+
+	/* -- -- Set mines -- -- */
+	
+	for (var i = 0; i < mineCount; i++) {
+		var MineId = Math.floor(Math.random() * cellCount);
+		while (tds[MineId].className === "mine") { // Prevent two mines in same spot
+			MineId = Math.floor(Math.random() * cellCount);
+		}
+		tds[MineId].className = "mine";
+	}
+	
+	/*  Set surrounding numbers  */
+	
+	for (var i = 0; i < cellCount; i++) {
+		var cell = Number(tds[i].id.slice(4));
+		if (tds[i].classList.contains("mine")) {
+		
+			var northWall = cell < gridSize;
+			var eastWall = (cell + 1) % gridSize == 0;
+			var southWall = cell >= (gridSize * gridSize - gridSize)
+			var westWall = cell % gridSize == 0;
+			
+			if (!northWall && !westWall) {
+				tds[i - (gridSize + 1)].className += " nearby nearby1";
+			}
+			if (!northWall) {
+				tds[i - gridSize].className += " nearby nearby1";
+			}
+			if (!northWall && !eastWall) {
+				tds[i - (gridSize - 1)].className += " nearby nearby1";
+			}
+			if (!westWall) {
+				tds[i - 1].className += " nearby nearby1";
+			}
+			if (!eastWall) {
+				tds[i + 1].className += " nearby nearby1";
+			}
+			if (!southWall && !westWall) {
+				tds[i + (gridSize - 1)].className += " nearby nearby1";
+			}
+			if (!southWall) {
+				tds[i + gridSize].className += " nearby nearby1";
+			}
+			if (!southWall && !eastWall) {
+				tds[i + gridSize + 1].className += " nearby nearby1";
+			}
+		}
+	}
+	
+	// update nearby numbers (1 --> 2,3, ... ,7)
+	for (var i = 0; i < cellCount; i++) {
+		if (tds[i].classList.contains("nearby") && !(tds[i].classList.contains("mine"))) {
+			var nearbyCount = 0;
+			var classes = tds[i].className.trim().split(" ")
+			for (var j = 0; j < classes.length; j++) {
+				if (classes[j] == "nearby1") {
+					nearbyCount++;
+				}
+			}
+			switch (nearbyCount) {
+				case 1:
+					tds[i].innerHTML = "1";
+					break;
+			
+				case 2:
+					tds[i].innerHTML = "2";
+					tds[i].className += " nearby2";
+					break;
+					
+				case 3:
+					tds[i].innerHTML = "3";
+					tds[i].className += " nearby3";
+					break;
+					
+				case 4:
+					tds[i].innerHTML = "4";
+					tds[i].className += " nearby4";
+					break;
+					
+				case 5:
+					tds[i].innerHTML = "5";
+					tds[i].className += " nearby5";
+					break;
+					
+				case 6:
+					tds[i].innerHTML = "6";
+					tds[i].className += " nearby6";
+					break;
+					
+				case 7:
+					tds[i].innerHTML = "7";
+					tds[i].className += " nearby7";
+					break;
+					
+				case 8:
+					tds[i].innerHTML = "8";
+					tds[i].className += " nearby8";
+					break;
+				}
+			} 
+		}
+	
+	// Hide cells
+	for (var i = 0; i < cellCount; i++) {
+		tds[i].className += " hidden";
+	}
+	
+	document.querySelector("#mine-counter").innerHTML = "Mines left: " + mineCount + " / " + mineCount; 
+	startedTime = false;
+	end = false;
+}
+
+function floodFill(node) {
+	// recursively check surrounding cells
+	if (document.querySelector("#cell" + node).classList.contains("white")) { return; }
+	if (document.querySelector("#cell" + node).classList.contains("nearby")) { 
+		document.querySelector("#cell" + node).classList.remove("hidden");
+		if (
+			node % gridSize !== 0 &&
+			node % gridSize !== gridSize - 1 && 
+			node > gridSize - 1 &&
+			node < cellCount - gridSize - 1
+		) {
+		
+			if ( document.querySelector("#cell" + (node + 1)).classList.contains("white") ||
+				 document.querySelector("#cell" + (node - 1)).classList.contains("white") ) {
+					document.querySelector("#cell" + (node + gridSize)).classList.remove("hidden");
+					document.querySelector("#cell" + (node - gridSize)).classList.remove("hidden");
+				}
+			
+			if ( document.querySelector("#cell" + (node + gridSize)).classList.contains("white") ||
+				 document.querySelector("#cell" + (node - gridSize)).classList.contains("white") ) {
+					document.querySelector("#cell" + (node + 1)).classList.remove("hidden");
+					document.querySelector("#cell" + (node - 1)).classList.remove("hidden");
+				}
+		} return;
+	}
+	
+	document.querySelector("#cell" + node).className += " white";
+	document.querySelector("#cell" + node).classList.remove("hidden");
+	
+	if (node % gridSize) {
+		floodFill(node - 1)
+	}
+	
+	if (node % gridSize !== gridSize - 1) {
+		floodFill(node + 1);
+	}
+	
+	if (node > gridSize - 1) {
+		floodFill(node - gridSize);
+	}
+	
+	if (node < cellCount - gridSize) {
+		floodFill(node + gridSize);
+	} 
+	return;
+}
+
+function clicked(evt) {
+	
+	if (end === true) { 
+		if (confirm("Game over, click ok to reload the page.")) {
+			location.reload();
+		};
+		return;
+	}
+	
+	if (startedTime === false) {
+		beginTime();
+	}
+	
+	var NumId = evt.target.id.slice(4);
+	
+	if (evt.which === 3) { // right-click
+		
+		if (evt.target.classList.contains("mine")) {
+			evt.target.style.fontSize = "16px";
+			
+			if (evt.target.innerHTML === "") {
+				mineCount--;
+				evt.target.innerHTML = "&#9873;";
+
+			}
+			document.querySelector("#mine-counter").innerHTML = "Mines left: " + mineCount + " / " + initialMineCount; 
+			
+			if (mineCount === 0) {
+				end = true;
+				
+				document.querySelector("#notificator").innerHTML = "All mines flagged, You win!";
+				document.querySelector("#notificator").style.color = "green";			
+				localStorage.winCount = Number(localStorage.winCount) + 1;
+				localStorage.playCount = Number(localStorage.playCount) + 1
+				document.querySelector("#win-counter").innerHTML = "Wins: " + localStorage.winCount + "/" + localStorage.playCount;
+				
+				function newRecord() {}
+				
+				switch (localStorage.gridSizeSaved + " - " + localStorage.difficultySaved) {
+				
+					case "8 - 1":
+						if (localStorage.MinutesE8 === undefined || Number(localStorage.MinutesE8) > minutes || (Number(localStorage.MinutesE8) === minutes && Number(localStorage.SecondsE8) > seconds)) {
+							localStorage.MinutesE8 = minutes;
+							localStorage.SecondsE8 = seconds;
+							document.querySelector("#easy-8").innerHTML = String(localStorage.MinutesE8) + ":" + String(localStorage.SecondsE8);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "8 - 2":
+						if (localStorage.MinutesM8 === undefined || Number(localStorage.MinutesM8) > minutes || (Number(localStorage.MinutesM8) === minutes && Number(localStorage.SecondsM8) > seconds)) {
+							localStorage.MinutesM8 = minutes;
+							localStorage.SecondsM8 = seconds;
+							document.querySelector("#medium-8").innerHTML = String(localStorage.MinutesM8) + ":" + String(localStorage.SecondsM8);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "8 - 3":
+						if (localStorage.MinutesH8 === undefined || Number(localStorage.MinutesH8) > minutes || (Number(localStorage.MinutesH8) === minutes && Number(localStorage.SecondsH8) > seconds)) {
+							localStorage.MinutesH8 = minutes;
+							localStorage.SecondsH8 = seconds;
+							document.querySelector("#hard-8").innerHTML = String(localStorage.MinutesH8) + ":" + String(localStorage.SecondsH8);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "12 - 1":
+						if (localStorage.MinutesE12 === undefined || Number(localStorage.MinutesE12) > minutes || (Number(localStorage.MinutesE12) === minutes && Number(localStorage.SecondsE12) > seconds)) {
+							localStorage.MinutesE12 = minutes;
+							localStorage.SecondsE12 = seconds;
+							document.querySelector("#easy-12").innerHTML = String(localStorage.MinutesE12) + ":" + String(localStorage.SecondsE12);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "12 - 2":
+						if (localStorage.MinutesM12 === undefined || Number(localStorage.MinutesM12) > minutes || (Number(localStorage.MinutesM12) === minutes && Number(localStorage.SecondsM12) > seconds)) {
+							localStorage.MinutesM12 = minutes;
+							localStorage.SecondsM12 = seconds;
+							document.querySelector("#medium-12").innerHTML = String(localStorage.MinutesM12) + ":" + String(localStorage.SecondsM12);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "12 - 3":
+						if (localStorage.MinutesH12 === undefined || Number(localStorage.MinutesH12) > minutes || (Number(localStorage.MinutesH12) === minutes && Number(localStorage.SecondsH12) > seconds)) {
+							localStorage.MinutesH12 = minutes;
+							localStorage.SecondsH12 = seconds;
+							document.querySelector("#hard-12").innerHTML = String(localStorage.MinutesH12) + ":" + String(localStorage.SecondsH12);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "16 - 1":
+						if (localStorage.MinutesE16 === undefined || Number(localStorage.MinutesE16) > minutes || (Number(localStorage.MinutesE16) === minutes && Number(localStorage.SecondsE16) > seconds)) {
+							localStorage.MinutesE16 = minutes;
+							localStorage.SecondsE16 = seconds;
+							document.querySelector("#easy-16").innerHTML = String(localStorage.MinutesE16) + ":" + String(localStorage.SecondsE16);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "16 - 2":
+						if (localStorage.MinutesM16 === undefined || Number(localStorage.MinutesM16) > minutes || (Number(localStorage.MinutesM16) === minutes && Number(localStorage.SecondsM16) > seconds)) {
+							localStorage.MinutesM16 = minutes;
+							localStorage.SecondsM16 = seconds;
+							document.querySelector("#medium-16").innerHTML = String(localStorage.MinutesM16) + ":" + String(localStorage.SecondsM16);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					case "16 - 3":
+						if (localStorage.MinutesH16 === undefined || Number(localStorage.MinutesH16) > minutes || (Number(localStorage.MinutesH16) === minutes && Number(localStorage.SecondsH16) > seconds)) {
+							localStorage.MinutesH16 = minutes;
+							localStorage.SecondsH16 = seconds;
+							document.querySelector("#hard-16").innerHTML = String(localStorage.MinutesH16) + ":" + String(localStorage.SecondsH16);
+							
+						} else {console.log("No new record!");}
+						break;
+					
+					default:
+						console.log("Custom gridsize");
+				}
+			}
+		} else if (evt.target.classList.contains("hidden")) {
+			document.querySelector("#notificator").innerHTML = "Flagged a wrong place, you lose!";
+			localStorage.playCount = Number(localStorage.playCount) + 1
+			document.querySelector("#win-counter").innerHTML = "Wins: " + localStorage.winCount + "/" + localStorage.playCount;
+			end = true;
+		}
+	} else { // left-click
+		if (evt.target.classList.contains("mine")) {
+			document.querySelector("#notificator").innerHTML = "Stepped on a mine, game over!";
+			evt.target.classList.remove("hidden");
+			if (clickCount > 0) { 
+				localStorage.playCount = Number(localStorage.playCount) + 1;
+				document.querySelector("#win-counter").innerHTML = "Wins: " + localStorage.winCount + "/" + localStorage.playCount;
+			} else {
+				console.log("Stepped on a mine on the first click - not counted!")
+			}
+			end = true;
+
+		} else if (evt.target.classList.contains("hidden")) {
+			clickCount++;
+			document.querySelector("#click-count").innerHTML = "Clicks: " + clickCount;
+			floodFill(Number(NumId));
+		}
+	}
+}
+
+function beginTime() { // Runs once per game after click
+	startedTime = true;
+	seconds = 0;
+	minutes = 0;
+	setInterval(updateTime, 1000);
+}
+
+function updateTime() { // Runs once per second
+	if (end === true) { return; }
+	seconds++;
+	localStorage.totalSeconds = Number(localStorage.totalSeconds) + 1;
+	if (seconds === 60) {
+		minutes++
+		seconds = 0;
+	}
+		
+	if (Number(localStorage.totalSeconds) === 60) {
+		localStorage.totalMinutes = Number(localStorage.totalMinutes) + 1;
+		localStorage.totalSeconds = "0";
+	}
+	
+	if (Number(localStorage.totalMinutes) === 60) {
+		localStorage.totalHours = Number(localStorage.totalHours) + 1;	
+		localStorage.totalMinutes = "0";
+	}
+	
+	if (seconds < 10) {
+		document.querySelector("#time-counter").innerHTML = "Time: " + minutes + ":0" + seconds;
+	
+	} else {
+		document.querySelector("#time-counter").innerHTML = "Time: " + minutes + ":" + seconds;
+	}
+	zeroPrefix();
+}
+	
+function settings() {
+	document.querySelector("#settings").style.zIndex = "10";
+}
+
+function stats() {
+	document.querySelector("#stats").style.zIndex = "10";
+}
+
+function mainMenu() {
+	document.querySelector("#settings").style.zIndex = "2";
+	document.querySelector("#stats").style.zIndex = "1";
+}
+
+function reloadReminder() {
+	document.querySelector("#notificator").innerHTML = "Remember to restart!";
+	document.querySelector("#notificator").style.color = "blue";
+}
+
+function size8() {
+	document.querySelector("#grid-size-12").style.textDecoration = "none";
+	document.querySelector("#grid-size-16").style.textDecoration = "none";
+	document.querySelector("#grid-size-8").style.textDecoration = "underline";
+	localStorage.setItem("gridSizeSaved", 8);
+	reloadReminder()
+}
+
+function size12() {
+	document.querySelector("#grid-size-8").style.textDecoration = "none";
+	document.querySelector("#grid-size-16").style.textDecoration = "none";
+	document.querySelector("#grid-size-12").style.textDecoration = "underline";
+	localStorage.setItem("gridSizeSaved", 12);
+	reloadReminder()
+}
+
+function size16() {
+	document.querySelector("#grid-size-8").style.textDecoration = "none";
+	document.querySelector("#grid-size-12").style.textDecoration = "none";
+	document.querySelector("#grid-size-16").style.textDecoration = "underline";
+	localStorage.setItem("gridSizeSaved", 16);
+	reloadReminder()
+}
+
+function setEasy() {
+	document.querySelector("#difficulty-medium").style.textDecoration = "none";
+	document.querySelector("#difficulty-hard").style.textDecoration = "none";
+	document.querySelector("#difficulty-easy").style.textDecoration = "underline";
+	localStorage.setItem("difficultySaved", 1);
+	reloadReminder()
+}
+
+function setMedium() {
+	document.querySelector("#difficulty-easy").style.textDecoration = "none";
+	document.querySelector("#difficulty-hard").style.textDecoration = "none";
+	document.querySelector("#difficulty-medium").style.textDecoration = "underline";
+	localStorage.setItem("difficultySaved", 2);
+	reloadReminder()
+}
+
+function setHard() {
+	document.querySelector("#difficulty-easy").style.textDecoration = "none";
+	document.querySelector("#difficulty-medium").style.textDecoration = "none";
+	document.querySelector("#difficulty-hard").style.textDecoration = "underline";
+	localStorage.setItem("difficultySaved", 3);
+	reloadReminder()
+}
+
+function localStorageInit() { // Sets default values for local-storage
+
+	if (localStorage.gridSizeSaved === undefined) {
+		gridSize = 8;
+		localStorage.gridSizeSaved = 8;
+		
+	} else {
+		gridSize = Number(localStorage.gridSizeSaved);
+	}
+	
+	if (localStorage.difficultySaved === undefined) {
+		localStorage.difficultySaved = 1;
+		difficulty = 1;
+	} else {
+		difficulty = Number(localStorage.difficultySaved);
+	}
+	
+	if (localStorage.playCount === undefined || localStorage.winCount === undefined) {	
+		localStorage.playCount = 0;
+		localStorage.winCount = 0;
+	}	
+	
+	document.querySelector("#win-counter").innerHTML = "Wins: " + localStorage.winCount + "/" + localStorage.playCount;
+	
+	if (localStorage.totalSeconds === undefined || localStorage.totalMinutes === undefined || localStorage.totalHours === undefined) {
+		localStorage.totalSeconds = "0";
+		localStorage.totalMinutes = "0";
+		localStorage.totalHours = "0";
+	}
+	if (localStorage.MinutesE8) {
+		document.querySelector("#easy-8").innerHTML = String(localStorage.MinutesE8) + ":" +String(localStorage.SecondsE8);
+	}
+	if (localStorage.MinutesE12) {
+		document.querySelector("#easy-12").innerHTML = String(localStorage.MinutesE12) + ":" +String(localStorage.SecondsE12);
+	}
+	if (localStorage.MinutesE16) {
+		document.querySelector("#easy-16").innerHTML = String(localStorage.MinutesE16) + ":" +String(localStorage.SecondsE16);
+	}
+	if (localStorage.MinutesM8) {
+		document.querySelector("#medium-8").innerHTML = String(localStorage.MinutesM8) + ":" +String(localStorage.SecondsM8);
+	}
+	if (localStorage.MinutesM12) {
+		document.querySelector("#medium-12").innerHTML = String(localStorage.MinutesM12) + ":" +String(localStorage.SecondsM12);
+	}
+	if (localStorage.MinutesM16) {
+		document.querySelector("#medium-16").innerHTML = String(localStorage.MinutesM16) + ":" +String(localStorage.SecondsM16);
+	}
+	if (localStorage.MinutesH8) {
+		document.querySelector("#hard-8").innerHTML = String(localStorage.MinutesH8) + ":" +String(localStorage.SecondsH8);
+	}
+	if (localStorage.MinutesH12) {
+		document.querySelector("#hard-12").innerHTML = String(localStorage.MinutesH12) + ":" +String(localStorage.SecondsH12);
+	}
+	if (localStorage.MinutesH16) {
+		document.querySelector("#hard-16").innerHTML = String(localStorage.MinutesH16) + ":" +String(localStorage.SecondsH16);
+	}
+}
+
+function zeroPrefix() {
+	
+	if (Number(localStorage.totalHours) < 10 || Number(localStorage.totalMinutes) < 10 || Number(localStorage.totalSeconds) < 10) {
+	 
+		if (Number(localStorage.totalHours) < 10 && Number(localStorage.totalMinutes) < 10 && Number(localStorage.totalSeconds) < 10) {
+			document.querySelector("#total-time-counter").innerHTML = "0" + localStorage.totalHours + ":0" + localStorage.totalMinutes + ":0" + localStorage.totalSeconds;
+		
+		} else if (Number(localStorage.totalHours) < 10 && Number(localStorage.totalMinutes) < 10) {
+			document.querySelector("#total-time-counter").innerHTML = "0" + localStorage.totalHours + ":0" + localStorage.totalMinutes + ":" + localStorage.totalSeconds;
+		
+		} else if (Number(localStorage.totalHours) < 10 && Number(localStorage.totalSeconds) < 10) {
+			document.querySelector("#total-time-counter").innerHTML = "0" + localStorage.totalHours + ":" + localStorage.totalMinutes + ":0" + localStorage.totalSeconds;
+		
+		} else if (Number(localStorage.totalMinutes) < 10 && Number(localStorage.totalSeconds) < 10) {
+			document.querySelector("#total-time-counter").innerHTML = localStorage.totalHours + ":0" + localStorage.totalMinutes + ":0" + localStorage.totalSeconds;
+		
+		} else {
+			if (Number(localStorage.totalHours) < 10) {
+				document.querySelector("#total-time-counter").innerHTML = "0" + localStorage.totalHours + ":" + localStorage.totalMinutes + ":" + localStorage.totalSeconds;
+			
+			} else if (Number(localStorage.totalMinutes) < 10) {
+				document.querySelector("#total-time-counter").innerHTML = localStorage.totalHours + ":0" + localStorage.totalMinutes + ":" + localStorage.totalSeconds;
+			
+			} else if (Number(localStorage.totalSeconds) < 10) {
+				document.querySelector("#total-time-counter").innerHTML = localStorage.totalHours + ":" + localStorage.totalMinutes + ":0" + localStorage.totalSeconds;
+			
+			} else {
+				console.log("Time-display outcome ERROR!");
+			}
+		}
+	} else {
+		document.querySelector("#total-time-counter").innerHTML = localStorage.totalHours + ":" + localStorage.totalMinutes + ":" + localStorage.totalSeconds;
+	}
+}
+
+function clearStorage() {
+	if (confirm("Are you sure?")) {
+		localStorage.clear();
+		location.reload();
+	}
+}
+
+</script>
+
+</html>
